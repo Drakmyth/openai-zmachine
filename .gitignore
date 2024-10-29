@@ -13,3 +13,4 @@ games/TRINITY.z4
 generated_image.png
 env/
 .vscode/
+!requirements.txt

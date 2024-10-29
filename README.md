@@ -1,15 +1,21 @@
-# Z-Machine interpreter
+# OpenAI Z-Machine interpreter
 
-Python 3 implementation of a z-machine interpreter, for playing Infocom games. To play a z-machine file:
+Running the `look` command in any game will generate a `generated_image.png` file in the root directory on disk using the description of that room as the AI prompt.
 
-`python zmachine [GAME_FILE]`
+## Environment setup
 
-The interpreter supports z-machine versions 3, 4 and 5. Version 4 games include Trinity, AMFV, and Bureaucracy. Version 5 games include Border Zone and Beyond Zork. Save files are in [Quetzal](http://inform-fiction.org/zmachine/standards/quetzal/index.html) format and should be compatible with the Frotz interpreter.
+Create a `.env` file in the root directory with your OpenAI API key:
 
-The original Zork trilogy (written by Tim Anderson, Marc Blank, Bruce Daniels, and Dave Lebling) is in the `games` directory.
+```
+OPENAI_API_KEY=<your key here>
+```
+
+## Run a game
+
+```
+> python3 zmachine ./games/ZORK1.z5
+```
 
 ## Further notes
-
-The [Z-Machine Standards Document](https://www.inform-fiction.org/zmachine/standards/z1point1/index.html), by Graham Nelson, is an indispensable guide for decoding the z-machine instructions.
 
 This space intentionally left blank.
