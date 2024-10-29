@@ -1,4 +1,5 @@
 __pycache__
+.env
 .ipynb_checkpoints
 .venv
 *.sav
@@ -8,3 +9,7 @@ __pycache__
 debug.txt
 .DS_Store
 .idea
+games/TRINITY.z4
+generated_image.png
+env/
+.vscode/

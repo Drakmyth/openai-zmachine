@@ -4,6 +4,9 @@ from event import EventManager, EventArgs
 from error import *
 from config import *
 import os
+from dotenv import load_dotenv
+from openai import OpenAI
+import requests
 
 
 class OutputStreamManager:
@@ -11,13 +14,15 @@ class OutputStreamManager:
         self.screen_stream = ScreenStream(screen)
         self.transcript_stream = TranscriptStream(memory_map)
         self.memory_stream = MemoryStream(memory_map)
+        self.openai_stream = OpenAiStream()
         self.event_manager = EventManager()
         self.event_manager.write_to_streams += self.write_to_streams_handler
         self.event_manager.select_output_stream += self.select_stream_handler
         self.streams = {
             1: self.screen_stream,
             2: self.transcript_stream,
-            3: self.memory_stream
+            3: self.memory_stream,
+            4: self.openai_stream
         }
 
     def select_stream_handler(self, sender, e: EventArgs):
@@ -39,6 +44,7 @@ class OutputStreamManager:
         else:
             self.screen_stream.write(text, newline)
             self.transcript_stream.write(text, newline)
+            self.openai_stream.write(text, newline)
 
 
 class OutputStream:
@@ -80,6 +86,68 @@ class ScreenStream(OutputStream):
             else:
                 self.screen.print_to_active_window(text, newline)
 
+
+class OpenAiStream(OutputStream):
+    _BUFFER_LENGTH = 1024
+
+    def __init__(self):
+        super().__init__()
+        self.buffer = ['\0'] * self._BUFFER_LENGTH
+        self.buffer_ptr = 0
+        self.event_manager.pre_read_input += self.pre_read_input_handler
+        self.event_manager.post_read_input += self.post_read_input_handler
+
+    def write(self, text: str, newline: bool):
+        if not self.is_active or self.active_window != LOWER_WINDOW:
+            return
+        text_len = len(text)
+        while self.buffer_ptr + text_len + 1 >= len(self.buffer):
+            self.buffer += ['\0'] * self._BUFFER_LENGTH
+        prev_ptr = self.buffer_ptr
+        next_ptr = self.buffer_ptr + text_len
+        self.buffer[prev_ptr:next_ptr] = text
+        if newline:
+            self.buffer[next_ptr] = "\n"
+            next_ptr += 1
+        self.buffer_ptr = next_ptr
+
+    def pre_read_input_handler(self, sender, e: EventArgs):
+        # Write all output in the buffer when with the command prompt.
+        if self.buffer_ptr == 0:
+            return
+        text = ''.join(self.buffer[:self.buffer_ptr])
+        text = text[text.find('\n')+1:] # Trim room title
+        text = text.removesuffix("\n\n>") # Trim input prompt
+        #text = "You are an award-winning photographer who specializes in taking clear, immersive photographs. Take a photograph that features the following: " + text
+
+        self.prompt_openai(text)
+
+        self.buffer_ptr = 0
+        self.is_active = False
+
+    def prompt_openai(self, prompt):
+        client = OpenAI(
+            # This is the default and can be omitted
+            api_key=os.getenv('OPENAI_API_KEY'),
+        )
+
+        response = client.images.generate(prompt=prompt)
+
+        # Extract the URL of the generated image
+        image_url = response.data[0].url
+        image_response = requests.get(image_url)
+
+        # Save the image to a file
+        if image_response.status_code == 200:
+            image_path = 'generated_image.png'
+            with open(image_path, 'wb') as f:
+                f.write(image_response.content)
+        else:
+            print("Failed to download the image")
+
+    def post_read_input_handler(self, sender, e: EventArgs):
+        if e.command == "look":
+            self.is_active = True
 
 class TranscriptStream(OutputStream):
     _BUFFER_LENGTH = 1024
